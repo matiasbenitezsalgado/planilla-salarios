@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Planilla de Salarios</title>
+  <link rel="stylesheet" href="css/app.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">
+      <i class="icon">&#9632;</i>
+      <h1>Planilla de Salarios</h1>
+      <p>Sistema de liquidación semanal</p>
+    </div>
+    <div id="login-error" class="alert alert-error" style="display:none"></div>
+    <div class="field-group">
+      <label>Correo electrónico</label>
+      <input type="email" id="login-email" placeholder="usuario@empresa.com" autocomplete="email"/>
+    </div>
+    <div class="field-group">
+      <label>Contraseña</label>
+      <div class="input-eye">
+        <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"/>
+        <button type="button" onclick="togglePass()" tabindex="-1" aria-label="Mostrar contraseña">&#128065;</button>
+      </div>
+    </div>
+    <button class="btn-primary btn-full" onclick="login()" id="btn-login">Ingresar</button>
+    <p class="login-hint">Acceso restringido. Solo personal autorizado.</p>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
+<div id="app" style="display:none">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">&#9632; Planilla</span>
+      <button class="sidebar-close" onclick="toggleSidebar()" aria-label="Cerrar menú">&#10005;</button>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" onclick="showPage('semanas')">
+        <span class="nav-icon">&#128197;</span> Semanas
+      </a>
+      <a href="#" class="nav-item" onclick="showPage('empleados')">
+        <span class="nav-icon">&#128100;</span> Empleados
+      </a>
+      <a href="#" class="nav-item" onclick="showPage('feriados')">
+        <span class="nav-icon">&#127973;</span> Feriados
+      </a>
+      <a href="#" class="nav-item" onclick="showPage('liquidacion')">
+        <span class="nav-icon">&#128181;</span> Liquidación
+      </a>
+      <a href="#" class="nav-item" onclick="showPage('detalle')">
+        <span class="nav-icon">&#128203;</span> Detalle extras
+      </a>
+      <a href="#" class="nav-item" onclick="showPage('ips')">
+        <span class="nav-icon">&#128737;</span> IPS / Aportes
+      </a>
+      <a href="#" class="nav-item admin-only" onclick="showPage('configuracion')">
+        <span class="nav-icon">&#9881;</span> Configuración
+      </a>
+      <a href="#" class="nav-item admin-only" onclick="showPage('usuarios')">
+        <span class="nav-icon">&#128272;</span> Usuarios
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip" id="user-chip">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div>
+          <div class="user-name" id="user-name">—</div>
+          <div class="user-rol" id="user-rol">—</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-wrap">
+    <header class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()" aria-label="Menú">&#9776;</button>
+      <h2 class="page-title" id="page-title">Semanas</h2>
+      <div class="readonly-badge" id="readonly-badge" style="display:none">Solo lectura</div>
+    </header>
+
+    <main class="page-content">
+
+      <!-- PÁGINA: SEMANAS -->
+      <div id="page-semanas" class="page active">
+        <div class="page-actions admin-only">
+          <button class="btn-primary" onclick="modalSemana()">+ Nueva semana</button>
+        </div>
+        <div id="semanas-list" class="cards-grid"></div>
+      </div>
+
+      <!-- PÁGINA: EMPLEADOS -->
+      <div id="page-empleados" class="page">
+        <div class="page-actions admin-only">
+          <button class="btn-primary" onclick="modalEmpleado()">+ Agregar empleado</button>
+          <button class="btn-outline" onclick="importarMarcaciones()">&#8679; Importar marcaciones</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="emp-search" placeholder="Buscar empleado..." oninput="renderEmpleados()"/>
+          <select id="emp-filtro-tipo" onchange="renderEmpleados()">
+            <option value="">Todos los tipos</option>
+            <option value="operativo">Operativos</option>
+            <option value="administrativo">Administrativos</option>
+            <option value="directivo">Directivos</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table id="tabla-empleados">
+            <thead><tr>
+              <th>Nombre</th><th>Tipo</th><th>Salario mensual</th><th>Estado</th><th class="admin-only">Acciones</th>
+            </tr></thead>
+            <tbody id="tbody-empleados"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PÁGINA: FERIADOS -->
+      <div id="page-feriados" class="page">
+        <div class="page-actions admin-only">
+          <button class="btn-primary" onclick="modalFeriado()">+ Agregar feriado</button>
+          <button class="btn-outline" onclick="cargarFeriadosPY()">Cargar feriados PY 2026</button>
+        </div>
+        <div class="table-wrap">
+          <table id="tabla-feriados">
+            <thead><tr>
+              <th>Fecha</th><th>Descripción</th><th>Aplica a</th><th>¿Se trabajó?</th><th class="admin-only">Acciones</th>
+            </tr></thead>
+            <tbody id="tbody-feriados"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PÁGINA: LIQUIDACIÓN -->
+      <div id="page-liquidacion" class="page">
+        <div class="page-actions">
+          <select id="sel-semana-liq" onchange="cargarLiquidacion()">
+            <option value="">Seleccionar semana...</option>
+          </select>
+          <button class="btn-primary admin-only" onclick="calcularLiquidacion()" id="btn-calcular">Calcular semana</button>
+          <button class="btn-outline" onclick="exportarLiqCSV()">&#8681; Exportar CSV</button>
+        </div>
+        <div class="metrics-grid" id="metrics-liq">
+          <div class="metric"><div class="metric-label">Empleados</div><div class="metric-val" id="m-emp">—</div></div>
+          <div class="metric"><div class="metric-label">Total bruto</div><div class="metric-val green" id="m-bruto">—</div></div>
+          <div class="metric"><div class="metric-label">IPS obrero (9%)</div><div class="metric-val red" id="m-desc">—</div></div>
+          <div class="metric"><div class="metric-label">Total neto</div><div class="metric-val" id="m-neto">—</div></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Empleado</th><th>Tipo</th><th>Sal. semanal</th>
+              <th>+ Ext. diurnas</th><th>+ Ext. noct.</th><th>+ Feriados</th>
+              <th>− Faltas</th><th>+ Presentismo</th>
+              <th>Bruto</th><th>− IPS 9%</th><th>Neto</th>
+            </tr></thead>
+            <tbody id="tbody-liq"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PÁGINA: DETALLE EXTRAS -->
+      <div id="page-detalle" class="page">
+        <div class="page-actions">
+          <select id="sel-semana-det" onchange="cargarDetalle()">
+            <option value="">Seleccionar semana...</option>
+          </select>
+        </div>
+        <p class="page-hint">Detalle concepto por concepto. Para que los directivos puedan verificar cada pago extra.</p>
+        <div id="detalle-list"></div>
+      </div>
+
+      <!-- PÁGINA: IPS -->
+      <div id="page-ips" class="page">
+        <div class="page-actions">
+          <select id="sel-semana-ips" onchange="cargarIPS()">
+            <option value="">Seleccionar semana...</option>
+          </select>
+          <button class="btn-outline" onclick="exportarIPSCSV()">&#8681; Exportar CSV</button>
+        </div>
+        <div class="metrics-grid">
+          <div class="metric"><div class="metric-label">Masa salarial bruta</div><div class="metric-val" id="i-masa">—</div></div>
+          <div class="metric"><div class="metric-label">Aporte obrero (9%)</div><div class="metric-val red" id="i-obr">—</div></div>
+          <div class="metric"><div class="metric-label">Aporte patronal (14%)</div><div class="metric-val red" id="i-pat">—</div></div>
+          <div class="metric"><div class="metric-label">Total a depositar IPS</div><div class="metric-val" id="i-tot">—</div></div>
+        </div>
+        <div class="info-box">Ley N° 98/92 — IPS Paraguay · Obrero: 9% · Patronal: 14%</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Empleado</th><th>Tipo</th><th>Sal. base sem.</th><th>Extras y bonif.</th>
+              <th>Bruto sem.</th><th>Obrero 9%</th><th>Patronal 14%</th><th>Total IPS</th>
+            </tr></thead>
+            <tbody id="tbody-ips"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PÁGINA: CONFIGURACIÓN (solo admin) -->
+      <div id="page-configuracion" class="page">
+        <div class="config-grid" id="config-form"></div>
+        <button class="btn-primary admin-only" onclick="guardarConfig()">Guardar configuración</button>
+      </div>
+
+      <!-- PÁGINA: USUARIOS (solo admin) -->
+      <div id="page-usuarios" class="page">
+        <div class="page-actions">
+          <button class="btn-primary" onclick="modalUsuario()">+ Agregar usuario</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="tbody-usuarios"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- MODAL GENÉRICO -->
+<div id="modal-overlay" class="modal-overlay" style="display:none" onclick="closeModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="modal-title">Modal</h3>
+      <button class="modal-close" onclick="closeModal()" aria-label="Cerrar">&#10005;</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast" style="display:none"></div>
+
+<!-- IMPORTAR CSV -->
+<input type="file" id="file-import" accept=".csv,.xls,.xlsx" style="display:none" onchange="procesarArchivoImport(this)"/>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+<script src="js/calculos.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
